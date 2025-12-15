@@ -1,387 +1,673 @@
 {
-    "name": "List Invoice",
-    "nodes": [
-        {
-            "parameters": {
-                "pollTimes": {
-                    "item": [
-                        {
-                            "mode": "everyMinute"
-                        }
-                    ]
-                },
-                "triggerOn": "specificFolder",
-                "folderToWatch": {
-                    "__rl": true,
-                    "value": "",
-                    "mode": "list",
-                    "cachedResultName": "invoice"
-                },
-                "event": "fileCreated",
-                "options": {}
-            },
-            "id": "06fe9194-6288-4074-aa0a-5622cfbcbf45",
-            "name": "Google Drive Trigger",
-            "type": "n8n-nodes-base.googleDriveTrigger",
-            "position": [
-                0,
-                208
-            ],
-            "typeVersion": 1
+  "name": "Manage Invoice",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
         },
-        {
-            "parameters": {
-                "options": {}
-            },
-            "id": "b14b64e2-b9a1-42f8-993c-c6e13b48d282",
-            "name": "Extract text",
-            "type": "n8n-nodes-base.mistralAi",
-            "position": [
-                416,
-                208
-            ],
-            "typeVersion": 1
+        "simple": false,
+        "filters": {
+          "q": "has:attachment"
         },
-        {
-            "parameters": {
-                "promptType": "define",
-                "text": "=あなたは適格請求書（インボイス）の分析の専門家です。\n\n1. 適格請求書（インボイス）かを判定します。\n2. 内容が適格請求書（インボイス）でない場合は `{ isInvoiceFile: false }` をレスポンスし、適格請求書（インボイス）である場合は必要な項目を分析してください。\n\n以下がPDFから抽出した内容です：\n{{ $json.pages[0].markdown }}",
-                "hasOutputParser": true,
-                "options": {}
-            },
-            "id": "c1d461eb-892c-4daf-9ac6-d845294cdf1a",
-            "name": "AI Agent",
-            "type": "@n8n/n8n-nodes-langchain.agent",
-            "position": [
-                624,
-                208
-            ],
-            "typeVersion": 2.2
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -208
+      ],
+      "id": "e2cedef3-69a3-4559-bf30-4084761dbd8c",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=data",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
         },
-        {
-            "parameters": {
-                "model": {
-                    "__rl": true,
-                    "mode": "list",
-                    "value": "gpt-4.1-mini"
+        "folderId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "invoice"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1008,
+        -16
+      ],
+      "id": "49bc00ed-7bbb-455d-a6e2-68244e7c3497",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $json.id }}?alt=media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "bb242bab-fce1-4fdd-b350-ead94957b99d",
+      "name": "Get files from Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        0,
+        224
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        -192
+      ],
+      "id": "741bb041-601a-41a2-b9ce-1d5f48b1d45c",
+      "name": "Mark a message as read",
+      "webhookId": "ba6d84f9-e057-4223-a64e-3c8047a47dd9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": "={{ $input.all().filter(item => $('Labeling Agent').item.json.output.labels.includes(item.json.name)).map(item => item.json.id) }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        -384
+      ],
+      "id": "3db547f5-96e2-4b49-b428-dd8776729175",
+      "name": "Add label to message",
+      "webhookId": "8c9c0570-34dc-45fb-a7aa-4c7a36dfdccb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -384
+      ],
+      "id": "1f0d0c38-d9c5-47e4-baf6-06595f36ca3a",
+      "name": "Get many labels",
+      "webhookId": "46a7b29f-3cbc-400b-8344-37912271016c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        208,
+        224
+      ],
+      "id": "e290790a-a4de-4962-b9cd-0985b4838569",
+      "name": "Analyze document",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "content"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        416,
+        224
+      ],
+      "id": "f998f487-5b46-44b1-9273-9c8bd5e6e399",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Invoices from Google Drive"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "シート1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "From": "={{ $json.output.From }}",
+            "Link to File": "={{ $('Get files from Drive').all().map(item => item.json.webViewLink).join(\"\\n\\n\") }}",
+            "Invoice Number": "={{ $json.output.invoiceNumber }}",
+            "Short Description": "={{ $json.output.shortDescription }}",
+            "Price": "={{ $json.output.price }}",
+            "Date": "={{ $today.format(\"yyyy-MM-dd\") }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "From",
+              "displayName": "From",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Short Description",
+              "displayName": "Short Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link to File",
+              "displayName": "Link to File",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6d3a4a22-ccb4-46d0-85bc-c73d208a8268",
+      "name": "Append row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        976,
+        224
+      ],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## メールの分類\n\n- 1分ごとにGmailをチェック\n- 請求書に関するメールか判別\n- 適切なラベルの選定\n- ラベリング、既読\n- Google Driveにファイルのアップロード\n ",
+        "height": 544,
+        "width": 1536,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -352,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "3756dd9e-a051-46e5-bd70-56ae5b634388",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## メールの解析\n\n- Google Driveからファイルの取得\n- ファイルの内容を解析\n- 解析結果から必要な情報の抽出\n- 抽出結果をGoogle Sheetsまとめる",
+        "height": 448,
+        "width": 1536,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -352,
+        144
+      ],
+      "typeVersion": 1,
+      "id": "4c074f76-e9c4-4e25-88d3-68dfca601992",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=以下は株式会社Human AIに来たメールの内容です。\n株式会社Human AIに来た請求書か判定してください。\n\nメールタイトル：\n{{ $json.subject }}\n\nメール本文：\n{{ $json.text }}\n\nまた、以下のリストから付けるべき適切なラベルを選択してください。（複数選択可）適切なラベルがない場合は何も選択しないでください。\n[\"Invoice\", \"AWS\", \"Google\", \"問い合わせ\"]",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        192,
+        -208
+      ],
+      "id": "19d7b318-16f2-4f2c-8413-959ccc95d8fd",
+      "name": "Labeling Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=あなたは適格請求書（インボイス）の分析の専門家です。\n\n請求書PDFの分析結果から、必要な情報を抽出してください。\n\n以下がPDFを分析した内容です：\n※ PDFが複数ある場合は\"----------\"で区切られます。\n\n{{ $json.content.map(item => item.parts[0].text).join('\\n\\n----------\\n\\n') }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "bcb013c1-3619-4876-9328-f8ee0e594721",
+      "name": "Extracting Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        624,
+        224
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        336,
+        448
+      ],
+      "id": "ae91fab5-cef8-4200-b3e9-0b76b8dfca8e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const gmailData = $('Gmail Trigger').first();\nconst binaryData = gmailData.binary;\n\nlet result = [];\nfor (const key of Object.keys(binaryData)) {\n  result.push({\n    json: {\n      fileName: binaryData[key].fileName\n    },\n    binary: {\n      data: binaryData[key]\n    }\n  });\n}\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        -16
+      ],
+      "id": "9fe69b37-a09d-4e11-a52c-dda2fad43d30",
+      "name": "Extract Attachments"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
                 },
-                "options": {}
+                "conditions": [
+                  {
+                    "id": "60dbe905-1c1d-4202-8eb7-29ef07aac037",
+                    "leftValue": "={{ $json.output.isInvoice }}",
+                    "rightValue": "={{ true }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
             },
-            "id": "2eb3bc96-8cc3-4cd8-92f6-be7e00c96308",
-            "name": "OpenAI Chat Model",
-            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-            "position": [
-                544,
-                416
-            ],
-            "typeVersion": 1.2
-        },
-        {
-            "parameters": {
-                "jsonSchemaExample": "{\n  \"isInvoiceFile\": true,\n  \"invoiceNumber\": \"INV123\",\n  \"From\": \"株式会社テクノロジー\",\n  \"price\": \"¥550,000\",\n  \"invoiceDate\": \"20/08/2025\",\n  \"dueDate\": \"25/08/2025\",\n  \"shortDescription\": \"請求書の内容を簡潔にまとめた説明文\"\n}"
-            },
-            "id": "8a25452a-8d83-410f-aa21-7d815b7d37e0",
-            "name": "Structured Output Parser",
-            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-            "position": [
-                848,
-                416
-            ],
-            "typeVersion": 1.3
-        },
-        {
-            "parameters": {
-                "operation": "append",
-                "documentId": {
-                    "__rl": true,
-                    "value": "",
-                    "mode": "list",
-                    "cachedResultName": "Invoices from Google Drive"
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
                 },
-                "sheetName": {
-                    "__rl": true,
-                    "value": "gid=0",
-                    "mode": "list",
-                    "cachedResultName": "シート1"
-                },
-                "columns": {
-                    "mappingMode": "defineBelow",
-                    "value": {
-                        "From": "={{ $json.output.From }}",
-                        "Due Date": "={{ $json.output.dueDate }}",
-                        "Invoice Date": "={{ $json.output.invoiceDate }}",
-                        "Link to File": "={{ $('Google Drive Trigger').item.json.webViewLink }}",
-                        "Invoice Number": "={{ $json.output.invoiceNumber }}",
-                        "Short Description": "={{ $json.output.shortDescription }}",
-                        "Price": "={{ $json.output.price }}"
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.isInvoice && Object.keys($('Gmail Trigger').item?.binary).length > 0 }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
                     },
-                    "matchingColumns": [],
-                    "schema": [
-                        {
-                            "id": "Invoice Number",
-                            "displayName": "Invoice Number",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true
-                        },
-                        {
-                            "id": "From",
-                            "displayName": "From",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true
-                        },
-                        {
-                            "id": "Price",
-                            "displayName": "Price",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true,
-                            "removed": false
-                        },
-                        {
-                            "id": "Invoice Date",
-                            "displayName": "Invoice Date",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true
-                        },
-                        {
-                            "id": "Due Date",
-                            "displayName": "Due Date",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true
-                        },
-                        {
-                            "id": "Short Description",
-                            "displayName": "Short Description",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true
-                        },
-                        {
-                            "id": "Link to File",
-                            "displayName": "Link to File",
-                            "required": false,
-                            "defaultMatch": false,
-                            "display": true,
-                            "type": "string",
-                            "canBeUsedToMatch": true
-                        }
-                    ],
-                    "attemptToConvertTypes": false,
-                    "convertFieldsToString": false
-                },
-                "options": {}
-            },
-            "id": "563c8d34-a4f5-4f9f-97d6-59b4f26b6a67",
-            "name": "Append row in sheet",
-            "type": "n8n-nodes-base.googleSheets",
-            "position": [
-                960,
-                208
-            ],
-            "typeVersion": 4.7
+                    "id": "9ebb0e79-8f0a-46a7-84be-151b9791c543"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
         },
-        {
-            "parameters": {
-                "pollTimes": {
-                    "item": [
-                        {
-                            "mode": "everyMinute"
-                        }
-                    ]
-                },
-                "simple": false,
-                "filters": {
-                    "labelIds": [],
-                    "q": "has:attachment"
-                },
-                "options": {
-                    "downloadAttachments": true
-                }
-            },
-            "type": "n8n-nodes-base.gmailTrigger",
-            "typeVersion": 1.3,
-            "position": [
-                0,
-                0
-            ],
-            "id": "e2cedef3-69a3-4559-bf30-4084761dbd8c",
-            "name": "Gmail Trigger"
-        },
-        {
-            "parameters": {
-                "inputDataFieldName": "=data",
-                "driveId": {
-                    "__rl": true,
-                    "value": "My Drive",
-                    "mode": "list",
-                    "cachedResultName": "My Drive"
-                },
-                "folderId": {
-                    "__rl": true,
-                    "value": "",
-                    "mode": "list",
-                    "cachedResultName": "invoice"
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.googleDrive",
-            "typeVersion": 3,
-            "position": [
-                416,
-                0
-            ],
-            "id": "49bc00ed-7bbb-455d-a6e2-68244e7c3497",
-            "name": "Upload file"
-        },
-        {
-            "parameters": {
-                "jsCode": "let result = [];\nfor (const item of $input.all()) {\n  for (const key of Object.keys(item.binary)){\n  result.push({\n    json: {\n      fileName: item.binary[key].fileName\n    },\n    binary: {\n      data: item.binary[key]\n    }\n  });\n  }\n}\n\nreturn result;"
-            },
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                208,
-                0
-            ],
-            "id": "9fe69b37-a09d-4e11-a52c-dda2fad43d30",
-            "name": "Code in JavaScript"
-        },
-        {
-            "parameters": {
-                "url": "=https://www.googleapis.com/drive/v3/files/{{ $json.id }}?alt=media",
-                "authentication": "predefinedCredentialType",
-                "nodeCredentialType": "googleDriveOAuth2Api",
-                "options": {
-                    "response": {
-                        "response": {
-                            "responseFormat": "file"
-                        }
-                    }
-                }
-            },
-            "id": "bb242bab-fce1-4fdd-b350-ead94957b99d",
-            "name": "Get files from Drive",
-            "type": "n8n-nodes-base.httpRequest",
-            "position": [
-                208,
-                208
-            ],
-            "typeVersion": 4.2
-        }
-    ],
-    "pinData": {},
-    "connections": {
-        "Google Drive Trigger": {
-            "main": [
-                [
-                    {
-                        "node": "Get files from Drive",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Extract text": {
-            "main": [
-                [
-                    {
-                        "node": "AI Agent",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "AI Agent": {
-            "main": [
-                [
-                    {
-                        "node": "Append row in sheet",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "OpenAI Chat Model": {
-            "ai_languageModel": [
-                [
-                    {
-                        "node": "AI Agent",
-                        "type": "ai_languageModel",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Structured Output Parser": {
-            "ai_outputParser": [
-                [
-                    {
-                        "node": "AI Agent",
-                        "type": "ai_outputParser",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Gmail Trigger": {
-            "main": [
-                [
-                    {
-                        "node": "Code in JavaScript",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Code in JavaScript": {
-            "main": [
-                [
-                    {
-                        "node": "Upload file",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Get files from Drive": {
-            "main": [
-                [
-                    {
-                        "node": "Extract text",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        -208
+      ],
+      "id": "1bdcce58-fb18-4221-bde8-4404826210ad",
+      "name": "IsInvoice"
     },
-    "active": false,
-    "settings": {
-        "executionOrder": "v1"
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"isInvoice\": true,\n    \"labels\": [\"Invoice\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        0
+      ],
+      "id": "ed279c4b-a70f-44e6-b9c3-a010e0dfff00",
+      "name": "Classify Document"
     },
-    "meta": {
-        "templateCredsSetupCompleted": true
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"invoiceNumber\": \"INV123\",\n  \"From\": \"株式会社テクノロジー\",\n  \"price\": \"¥550,000\",\n  \"shortDescription\": \"請求書の内容を簡潔にまとめた説明文\"\n}"
+      },
+      "id": "d6fedc42-e1c3-4ed9-a671-2318656cc6e0",
+      "name": "Invoice Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        848,
+        448
+      ],
+      "typeVersion": 1.3
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Labeling Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "tags": []
+    "Get files from Drive": {
+      "main": [
+        [
+          {
+            "node": "Analyze document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Get files from Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message": {
+      "main": [
+        []
+      ]
+    },
+    "Get many labels": {
+      "main": [
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze document": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Extracting Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Labeling Agent": {
+      "main": [
+        [
+          {
+            "node": "IsInvoice",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get many labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracting Agent": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Labeling Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Extracting Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Attachments": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IsInvoice": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Extract Attachments",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Document": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Labeling Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Extracting Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a110974a-0c01-4d62-bdb3-5dca57717da2",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "",
+  "tags": []
 }

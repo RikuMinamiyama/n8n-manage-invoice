@@ -15,11 +15,11 @@ Gmailで受信した請求書をGoogle Driveにアップロードすると、請
     - Gmail OAuth2 API
     - Google Drive OAuth2 API
     - Google Sheets OAuth2 API
-    - Mistral Cloud API
+    - Google Gemini(PaLM) API
 
     Googleの認証情報の設定はこちらから：https://console.cloud.google.com
 
-    Mistral AIの認証情報の設定はこちらから：https://mistral.ai
+    Google Gemini(PaLM) APIの認証情報の設定はこちらから：https://aistudio.google.com/
 
 
 ## お問い合わせ
